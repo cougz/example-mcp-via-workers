@@ -1,6 +1,16 @@
 {
-  "name": "mcp-uuid-generator",
+  "name": "mcp-server-template",
   "main": "src/index.ts",
   "compatibility_date": "2026-02-14",
-  "compatibility_flags": ["nodejs_compat"]
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  }
 }

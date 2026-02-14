@@ -1,12 +1,29 @@
 {
-  "name": "mcp-uuid-generator",
+  "name": "mcp-server-template",
   "version": "1.0.0",
+  "description": "Production-ready MCP server template for Cloudflare Workers",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "cf-typegen": "wrangler types"
+    "deploy:staging": "wrangler deploy --env staging",
+    "cf-typegen": "wrangler types",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "inspector": "npx @modelcontextprotocol/inspector"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cloudflare-workers",
+    "ai",
+    "agents"
+  ],
+  "author": "",
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.0",
     "agents": "^0.4.1",
@@ -14,7 +31,9 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250214.0",
+    "@types/node": "^22.14.0",
     "typescript": "^5.7.3",
+    "vitest": "^3.0.0",
     "wrangler": "^3.107.3"
   }
 }
