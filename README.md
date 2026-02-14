@@ -208,13 +208,72 @@ bun run deploy:staging
 
 ## MCP Client Configuration
 
-Add to your MCP client config (e.g., Claude Desktop, Cursor):
+### Claude Desktop / Cursor
+
+Add to your MCP client config:
 
 ```json
 {
   "mcpServers": {
     "my-server": {
       "url": "https://my-mcp-server.my-account.workers.dev/mcp"
+    }
+  }
+}
+```
+
+### OpenCode
+
+Add to `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "my-mcp-server": {
+      "type": "remote",
+      "url": "https://my-mcp-server.my-account.workers.dev/mcp",
+      "enabled": true,
+      "headers": {}
+    }
+  }
+}
+```
+
+#### OpenCode with Custom Headers
+
+For authenticated servers:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "my-mcp-server": {
+      "type": "remote",
+      "url": "https://my-mcp-server.my-account.workers.dev/mcp",
+      "enabled": true,
+      "headers": {
+        "Authorization": "Bearer your-token-here"
+      }
+    }
+  }
+}
+```
+
+#### OpenCode with Cloudflare Access
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "my-mcp-server": {
+      "type": "remote",
+      "url": "https://my-mcp-server.my-account.workers.dev/mcp",
+      "enabled": true,
+      "headers": {
+        "CF-Access-Client-Id": "your-client-id",
+        "CF-Access-Client-Secret": "your-client-secret"
+      }
     }
   }
 }
