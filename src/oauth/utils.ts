@@ -96,7 +96,12 @@ export async function createOAuthState(
   stateTTL = 600,
 ): Promise<string> {
   const state = oauthReqInfo.state || crypto.randomUUID();
-  await kv.put(`oauth:state:${state}`, JSON.stringify(oauthReqInfo), {
+  const codeVerifier = (oauthReqInfo as any).codeVerifier || crypto.randomUUID();
+  const stateData = {
+    ...oauthReqInfo,
+    _codeVerifier: codeVerifier,
+  };
+  await kv.put(`oauth:state:${state}`, JSON.stringify(stateData), {
     expirationTtl: stateTTL,
   });
   return state;
