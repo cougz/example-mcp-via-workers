@@ -95,11 +95,24 @@ export async function createOAuthState(
   kv: KVNamespace,
   stateTTL = 600,
 ): Promise<string> {
-  const stateToken = oauthReqInfo.state || crypto.randomUUID();
-  await kv.put(`oauth:state:${stateToken}`, JSON.stringify(oauthReqInfo), {
-    expirationTtl: stateTTL,
-  });
-  return stateToken;
+  const clientState = oauthReqInfo.state || crypto.randomUUID();
+  const cfState = crypto.randomUUID();
+  
+  await Promise.all([
+    kv.put(`oauth:state:${clientState}`, JSON.stringify({
+      ...oauthReqInfo,
+      _cfState: cfState,
+    }), {
+      expirationTtl: stateTTL,
+    }),
+    kv.put(`oauth:state:${cfState}`, JSON.stringify({
+      ...oauthReqInfo,
+      _clientState: clientState,
+    }), {
+      expirationTtl: stateTTL,
+    }),
+  ]);
+  return cfState;
 }
 
 export async function validateOAuthState(
@@ -107,26 +120,40 @@ export async function validateOAuthState(
   kv: KVNamespace,
 ): Promise<ValidateStateResult> {
   const url = new URL(request.url);
-  const stateFromQuery = url.searchParams.get("state");
+  const cfState = url.searchParams.get("state");
 
-  if (!stateFromQuery) {
+  if (!cfState) {
     throw new OAuthError("invalid_request", "Missing state parameter", 400);
   }
 
-  const storedDataJson = await kv.get(`oauth:state:${stateFromQuery}`);
+  let storedDataJson = await kv.get(`oauth:state:${cfState}`);
   if (!storedDataJson) {
     throw new OAuthError("invalid_request", "Invalid or expired state", 400);
   }
 
-  let oauthReqInfo: AuthRequest;
+  let oauthReqInfo: AuthRequest | undefined;
   try {
-    oauthReqInfo = JSON.parse(storedDataJson) as AuthRequest;
+    const parsed = JSON.parse(storedDataJson) as any;
+    const clientState = parsed._clientState;
+    if (clientState) {
+      const clientStateData = await kv.get(`oauth:state:${clientState}`);
+      if (clientStateData) {
+        oauthReqInfo = JSON.parse(clientStateData) as AuthRequest;
+      }
+    }
+    if (!oauthReqInfo) {
+      oauthReqInfo = parsed as AuthRequest;
+    }
+    await kv.delete(`oauth:state:${cfState}`);
   } catch (_e) {
     throw new OAuthError("server_error", "Invalid state data", 500);
   }
 
-  await kv.delete(`oauth:state:${stateFromQuery}`);
   const clearCookie = "";
+
+  if (!oauthReqInfo) {
+    throw new OAuthError("server_error", "Failed to retrieve OAuth request info", 500);
+  }
 
   return { oauthReqInfo, clearCookie };
 }
