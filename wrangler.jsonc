@@ -27,19 +27,5 @@
         }
       }
     }
-  },
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "MCPServer",
-        "class_name": "MCPServer"
-      }
-    ]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_sqlite_classes": ["MCPServer"]
-    }
-  ]
+  }
 }

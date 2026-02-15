@@ -1,16 +1,13 @@
 # MCP Server Template
 
-Production-ready MCP server template for Cloudflare Workers using the McpAgent pattern.
+Production-ready MCP server template for Cloudflare Workers using the stateless `createMcpHandler` pattern.
 
 ## Quick Start
 
 ```bash
 bun install && bun run dev
 # Connect MCP Inspector to http://localhost:8787/mcp
-# or http://localhost:8787/agents/mcp-server/default/mcp (new pattern)
 ```
-
-Note: `/mcp` is a backwards-compatible route that forwards to `/agents/mcp-server/default/mcp`.
 
 ## Scripts
 
@@ -43,12 +40,20 @@ Set via wrangler:
 wrangler secret put CORS_ORIGIN
 ```
 
+## Architecture
+
+This uses the **stateless** `createMcpHandler` pattern from the Agents SDK. This is the recommended approach for MCP servers that:
+- Don't need to maintain state between requests
+- Are simpler and have lower operational cost (no Durable Objects)
+- Are sufficient for tools, resources, and prompts
+
+If you need stateful behavior (e.g., game servers, chat state), use the `McpAgent` class with Durable Objects instead.
+
 ## Structure
 
 ```
 src/
-├── index.ts        # Entry point with health check & CORS
-├── mcp-agent.ts    # McpAgent class with tools
+├── index.ts        # Entry point with health check, CORS, and MCP handler
 ├── types.ts        # Type definitions
 └── utils/          # Logging utilities
     ├── logger.ts    # Structured logging
@@ -57,23 +62,19 @@ src/
 
 ## Add a Tool
 
-Edit `src/mcp-agent.ts`:
+Edit `src/index.ts` and register your tool with the server:
 
 ```typescript
 import { z } from "zod";
 
-export class MCPServer extends McpAgent<Env> {
-  async init() {
-    this.server.tool(
-      "my_tool",
-      "What it does",
-      { input: z.string() },
-      async ({ input }) => ({
-        content: [{ type: "text", text: JSON.stringify({ result: input }) }],
-      }),
-    );
-  }
-}
+server.tool(
+  "my_tool",
+  "What it does",
+  { input: z.string() },
+  async ({ input }) => ({
+    content: [{ type: "text", text: JSON.stringify({ result: input }) }],
+  }),
+);
 ```
 
 Zod schemas are validated automatically by the MCP SDK.
@@ -106,10 +107,9 @@ Zod schemas are validated automatically by the MCP SDK.
 }
 ```
 
-**Note**: Both `/mcp` (backwards-compatible) and `/agents/mcp-server/default/mcp` (agent pattern) work as endpoints.
-
 ## Features
 
+- **Stateless Architecture**: No Durable Objects required, simpler and lower cost
 - **Structured Logging**: All logs include request ID, timestamps, and context
 - **Error Tracking**: Stack traces captured and visible in Cloudflare Observability
 - **Security Headers**: X-Content-Type-Options, X-Frame-Options, Referrer-Policy
