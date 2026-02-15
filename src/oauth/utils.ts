@@ -24,10 +24,6 @@ export class OAuthError extends Error {
   }
 }
 
-export interface OAuthStateResult {
-  stateToken: string;
-}
-
 export interface ValidateStateResult {
   oauthReqInfo: AuthRequest;
   clearCookie: string;
@@ -98,12 +94,12 @@ export async function createOAuthState(
   oauthReqInfo: AuthRequest,
   kv: KVNamespace,
   stateTTL = 600,
-): Promise<OAuthStateResult> {
-  const stateToken = crypto.randomUUID();
+): Promise<string> {
+  const stateToken = oauthReqInfo.state || crypto.randomUUID();
   await kv.put(`oauth:state:${stateToken}`, JSON.stringify(oauthReqInfo), {
     expirationTtl: stateTTL,
   });
-  return { stateToken };
+  return stateToken;
 }
 
 export async function validateOAuthState(

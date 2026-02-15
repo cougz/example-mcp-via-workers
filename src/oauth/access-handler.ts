@@ -34,13 +34,13 @@ export async function handleAccessRequest(
 
   if (request.method === "GET" && pathname === "/authorize") {
     const oauthReqInfo = await env.OAUTH_PROVIDER.parseAuthRequest(request);
-    const { clientId } = oauthReqInfo;
+    const { clientId, state } = oauthReqInfo;
     if (!clientId) {
       return new Response("Invalid request", { status: 400 });
     }
 
     if (await isClientApproved(request, clientId, env.COOKIE_ENCRYPTION_KEY)) {
-      const { stateToken } = await createOAuthState(oauthReqInfo, env.OAUTH_KV);
+      const stateToken = await createOAuthState(oauthReqInfo, env.OAUTH_KV);
       return redirectToAccess(request, env, oauthReqInfo, stateToken);
     }
 
@@ -87,7 +87,7 @@ export async function handleAccessRequest(
         env.COOKIE_ENCRYPTION_KEY,
       );
 
-      const { stateToken } = await createOAuthState(state.oauthReqInfo, env.OAUTH_KV);
+      const stateToken = await createOAuthState(state.oauthReqInfo, env.OAUTH_KV);
 
       return redirectToAccess(request, env, state.oauthReqInfo, stateToken, {
         "Set-Cookie": approvedClientCookie,
