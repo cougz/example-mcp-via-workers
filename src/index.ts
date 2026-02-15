@@ -1,20 +1,35 @@
 import type { Env } from "./types";
-import { createPublicHandler, SERVER_CONFIG } from "./mcp-server";
+import { MCPServer } from "./mcp-agent";
+import { routeAgentRequest } from "agents";
 import { runWithContext, logger, formatError } from "./utils/logger";
 
-const CORS_HEADERS: HeadersInit = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
 };
+
+function getCorsHeaders(env: Env): HeadersInit {
+  const origin = env.CORS_ORIGIN ?? "*";
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+  };
+}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    const corsHeaders = getCorsHeaders(env);
+
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+      return new Response(null, {
+        status: 204,
+        headers: { ...corsHeaders, ...SECURITY_HEADERS },
+      });
     }
 
-    const url = new URL(request.url);
     const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
     const requestContext = {
       requestId,
@@ -28,34 +43,58 @@ export default {
       logger.info("Request started");
 
       try {
-        const handler = createPublicHandler();
-        const response = await handler.fetch(request, env, ctx);
-
-        const headers = new Headers(response.headers);
-        for (const [key, value] of Object.entries(CORS_HEADERS)) {
-          headers.set(key, value);
+        if (url.pathname === "/health" && request.method === "GET") {
+          logger.info("Health check");
+          return new Response(
+            JSON.stringify({ status: "ok", version: "1.0.0", timestamp: new Date().toISOString() }),
+            {
+              status: 200,
+              headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
+            },
+          );
         }
-        headers.set("X-Request-Id", requestId);
 
-        logger.info("Request completed", {
-          status: response.status,
-          durationMs: Date.now() - startTime,
+        const agentResponse = await routeAgentRequest(request, env);
+
+        if (agentResponse) {
+          const headers = new Headers(agentResponse.headers);
+          for (const [key, value] of Object.entries({ ...corsHeaders, ...SECURITY_HEADERS })) {
+            headers.set(key, value);
+          }
+          headers.set("X-Request-Id", requestId);
+
+          logger.info("Agent request completed", {
+            status: agentResponse.status,
+            durationMs: Date.now() - startTime,
+          });
+
+          return new Response(agentResponse.body, {
+            status: agentResponse.status,
+            headers,
+          });
+        }
+
+        logger.warn("Route not found", { path: url.pathname });
+        return new Response("Not found", {
+          status: 404,
+          headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "text/plain" },
         });
-
-        return new Response(response.body, { status: response.status, headers });
       } catch (error) {
         logger.error("Request failed", {
           error: formatError(error),
           durationMs: Date.now() - startTime,
         });
 
-        return new Response(JSON.stringify({ error: "Internal Server Error", requestId }), {
-          status: 500,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-        });
+        return new Response(
+          JSON.stringify({ error: "Internal Server Error", requestId }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, ...SECURITY_HEADERS, "Content-Type": "application/json" },
+          },
+        );
       }
     });
   },
 };
 
-export { SERVER_CONFIG };
+export { MCPServer };

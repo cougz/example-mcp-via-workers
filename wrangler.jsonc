@@ -6,11 +6,11 @@
   "observability": {
     "logs": {
       "enabled": true,
-      "head_sampling_rate": 1
+      "head_sampling_rate": 0.1
     },
     "traces": {
       "enabled": true,
-      "head_sampling_rate": 1
+      "head_sampling_rate": 0.01
     }
   },
   "env": {
@@ -27,5 +27,19 @@
         }
       }
     }
-  }
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MCPServer",
+        "class_name": "MCPServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["MCPServer"]
+    }
+  ]
 }
