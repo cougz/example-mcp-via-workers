@@ -27,5 +27,11 @@
         }
       }
     }
-  }
+  },
+  "migrations": [
+    {
+      "tag": "v2-delete-mcp-server-do",
+      "delete_classes": ["MCPServer"]
+    }
+  ]
 }
