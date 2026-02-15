@@ -4,6 +4,15 @@ import { createPublicHandler } from "../mcp-server";
 import { createAuthHandler } from "./auth-handler";
 import { log } from "../utils/logger";
 
+function buildAccessUrls(teamName: string, clientId: string) {
+  const baseUrl = `https://${teamName}.cloudflareaccess.com/cdn-cgi/access/sso/oidc/${clientId}`;
+  return {
+    tokenUrl: `${baseUrl}/token`,
+    authorizationUrl: `${baseUrl}/authorization`,
+    jwksUrl: `${baseUrl}/jwks`,
+  };
+}
+
 export function createOAuthProvider(env: OAuthEnv): OAuthProvider {
   const mcpHandler = createPublicHandler();
 
@@ -39,21 +48,17 @@ export function createOAuthProvider(env: OAuthEnv): OAuthProvider {
 export function isOAuthConfigured(env: unknown): env is OAuthEnv {
   const e = env as OAuthEnv;
   const configured = !!(
+    e.ACCESS_TEAM_NAME &&
     e.ACCESS_CLIENT_ID &&
     e.ACCESS_CLIENT_SECRET &&
-    e.ACCESS_TOKEN_URL &&
-    e.ACCESS_AUTHORIZATION_URL &&
-    e.ACCESS_JWKS_URL &&
     e.COOKIE_ENCRYPTION_KEY &&
     e.OAUTH_KV
   );
 
   const partial = !!(
+    e.ACCESS_TEAM_NAME ||
     e.ACCESS_CLIENT_ID ||
     e.ACCESS_CLIENT_SECRET ||
-    e.ACCESS_TOKEN_URL ||
-    e.ACCESS_AUTHORIZATION_URL ||
-    e.ACCESS_JWKS_URL ||
     e.COOKIE_ENCRYPTION_KEY ||
     e.OAUTH_KV
   );
@@ -63,11 +68,9 @@ export function isOAuthConfigured(env: unknown): env is OAuthEnv {
       "warn",
       "OAuth partially configured - some secrets missing. Running in public mode.",
       {
+        hasTeamName: !!e.ACCESS_TEAM_NAME,
         hasClientId: !!e.ACCESS_CLIENT_ID,
         hasClientSecret: !!e.ACCESS_CLIENT_SECRET,
-        hasTokenUrl: !!e.ACCESS_TOKEN_URL,
-        hasAuthUrl: !!e.ACCESS_AUTHORIZATION_URL,
-        hasJwksUrl: !!e.ACCESS_JWKS_URL,
         hasCookieKey: !!e.COOKIE_ENCRYPTION_KEY,
         hasKv: !!e.OAUTH_KV,
       }
