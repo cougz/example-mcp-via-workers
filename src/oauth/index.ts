@@ -49,7 +49,6 @@ export function isOAuthConfigured(env: unknown): env is OAuthEnv {
     e.ACCESS_TEAM_NAME &&
     e.ACCESS_CLIENT_ID &&
     e.ACCESS_CLIENT_SECRET &&
-    e.COOKIE_ENCRYPTION_KEY &&
     e.OAUTH_KV
   );
 
@@ -57,7 +56,6 @@ export function isOAuthConfigured(env: unknown): env is OAuthEnv {
     e.ACCESS_TEAM_NAME ||
     e.ACCESS_CLIENT_ID ||
     e.ACCESS_CLIENT_SECRET ||
-    e.COOKIE_ENCRYPTION_KEY ||
     e.OAUTH_KV
   );
 
@@ -66,7 +64,6 @@ export function isOAuthConfigured(env: unknown): env is OAuthEnv {
     if (!e.ACCESS_TEAM_NAME) missing.push("ACCESS_TEAM_NAME");
     if (!e.ACCESS_CLIENT_ID) missing.push("ACCESS_CLIENT_ID");
     if (!e.ACCESS_CLIENT_SECRET) missing.push("ACCESS_CLIENT_SECRET");
-    if (!e.COOKIE_ENCRYPTION_KEY) missing.push("COOKIE_ENCRYPTION_KEY");
     if (!e.OAUTH_KV) missing.push("OAUTH_KV (KV namespace binding)");
 
     log(

@@ -1,17 +1,10 @@
-import type { ClientInfo } from "@cloudflare/workers-oauth-provider";
 import type { OAuthEnv } from "../types";
 import {
-  addApprovedClient,
   bindStateToSession,
   createOAuthState,
   fetchUpstreamAuthToken,
-  generateCSRFProtection,
   getUpstreamAuthorizeUrl,
-  isClientApproved,
   OAuthError,
-  type Props,
-  renderApprovalDialog,
-  validateCSRFToken,
   validateOAuthState,
 } from "./utils";
 
@@ -99,78 +92,9 @@ export async function handleOAuthRequest(
       responseType: "code",
     };
 
-    if (!oauthClientId) {
-      return new Response("Invalid request", { status: 400 });
-    }
-
-    if (await isClientApproved(request, oauthClientId, env.COOKIE_ENCRYPTION_KEY)) {
-      const stateToken = await createOAuthState(oauthReqInfo, env.OAUTH_KV);
-      const { setCookie } = await bindStateToSession(stateToken);
-      return redirectToAccess(request, env, oauthReqInfo, stateToken, { "Set-Cookie": setCookie });
-    }
-
-    const { token: csrfToken, setCookie } = generateCSRFProtection();
-
-    return renderApprovalDialog(request, {
-      client: {
-        clientId: oauthClientId,
-        clientName: oauthClientId,
-        clientUri: oauthRedirectUri,
-        redirectUris: [oauthRedirectUri],
-        tokenEndpointAuthMethod: "client_secret_post",
-      },
-      csrfToken,
-      server: {
-        description: "This MCP server uses Cloudflare Access for authentication.",
-        logo: "https://avatars.githubusercontent.com/u/314135?s=200&v=4",
-        name: "Cloudflare Access MCP Server",
-      },
-      setCookie,
-      state: { oauthReqInfo },
-    });
-  }
-
-  if (request.method === "POST" && pathname === "/authorize") {
-    try {
-      const formData = await request.formData();
-
-      validateCSRFToken(formData, request);
-
-      const encodedState = formData.get("state");
-      if (!encodedState || typeof encodedState !== "string") {
-        return new Response("Missing state in form data", { status: 400 });
-      }
-
-      let state: { oauthReqInfo?: AuthRequest };
-      try {
-        state = JSON.parse(atob(encodedState));
-      } catch (_e) {
-        return new Response("Invalid state data", { status: 400 });
-      }
-
-      if (!state.oauthReqInfo || !state.oauthReqInfo.clientId) {
-        return new Response("Invalid request", { status: 400 });
-      }
-
-      const approvedClientCookie = await addApprovedClient(
-        request,
-        state.oauthReqInfo.clientId,
-        env.COOKIE_ENCRYPTION_KEY,
-      );
-
-      const stateToken = await createOAuthState(state.oauthReqInfo, env.OAUTH_KV);
-      const { setCookie: stateCookie } = await bindStateToSession(stateToken);
-
-      return redirectToAccess(request, env, state.oauthReqInfo, stateToken, {
-        "Set-Cookie": `${approvedClientCookie}; ${stateCookie}`,
-      });
-    } catch (error: any) {
-      console.error("POST /authorize error:", error);
-      if (error instanceof OAuthError) {
-        return error.toResponse();
-      }
-      return new Response(`Internal server error: ${error.message}`, { status: 500 });
-    }
+    const stateToken = await createOAuthState(oauthReqInfo, env.OAUTH_KV);
+    const { setCookie } = await bindStateToSession(stateToken);
+    return redirectToAccess(request, env, oauthReqInfo, stateToken, { "Set-Cookie": setCookie });
   }
 
   if (request.method === "GET" && pathname === "/callback") {
@@ -335,7 +259,6 @@ async function verifyToken(jwksUrl: string, token: string) {
   const key = await fetchAccessPublicKey(jwksUrl, jwt.header.kid);
 
   const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
   const data = encoder.encode(jwt.data);
   const signature = Uint8Array.from(
     atob(jwt.signature)
