@@ -1,10 +1,10 @@
 import type { Env, OAuthEnv } from "../types";
-import { createPublicHandler } from "../mcp-server";
+import { createProtectedHandler } from "../mcp-server";
 import { handleOAuthRequest } from "./access-handler";
 import { log } from "../utils/logger";
 
 export function createOAuthProvider(env: OAuthEnv) {
-  const mcpHandler = createPublicHandler();
+  const mcpHandler = createProtectedHandler();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const apiHandler: any = {
