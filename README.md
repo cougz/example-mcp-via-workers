@@ -88,6 +88,14 @@ export const tools: ToolDefinition[] = [
 
 The server runs in **public mode** by default. Enable OAuth to protect with Cloudflare Access.
 
+### Security Features
+
+✅ **RFC 9700 Compliant** - OAuth 2.0 Security Best Practices
+✅ **Session Binding** - State parameter bound to browser session for CSRF protection
+✅ **Authorization Code Injection Prevention** - State validated in token exchange
+✅ **PKCE Support** - Proof Key for Code Exchange for enhanced security
+✅ **Secure Cookie Handling** - `__Host-` prefix prevents subdomain attacks
+
 ### Prerequisites
 
 - Cloudflare Zero Trust organization
@@ -177,6 +185,24 @@ Push to GitHub. Workers Builds will auto-deploy.
 1. Connect MCP client to `https://your-worker.workers.dev/mcp`
 2. OAuth flow should trigger automatically
 3. After authentication, MCP tools will be available
+
+### Troubleshooting OAuth
+
+**Error: `{"error":"invalid_request","error_description":"Missing state parameter"}`**
+
+This is now automatically fixed. The OAuth implementation:
+- Includes `state` parameter in token exchange requests to Cloudflare Access
+- Binds state to browser session via `__Host-CONSENTED_STATE` cookie
+- Validates state against both KV storage and session cookie
+
+**Common Issues:**
+
+| Issue | Solution |
+|--------|----------|
+| OAuth not triggering | Verify all 4 secrets are configured in Worker settings |
+| State validation failures | Check Worker logs for specific error messages |
+| Cookie not set | Ensure HTTPS is being used (required for secure cookies) |
+| KV storage errors | Verify KV namespace binding in `wrangler.jsonc` |
 
 ### Partial Configuration Warning
 

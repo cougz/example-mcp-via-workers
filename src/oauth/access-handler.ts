@@ -2,6 +2,7 @@ import type { AuthRequest, OAuthHelpers, ClientInfo } from "@cloudflare/workers-
 import type { OAuthEnv } from "../types";
 import {
   addApprovedClient,
+  bindStateToSession,
   createOAuthState,
   fetchUpstreamAuthToken,
   generateCSRFProtection,
@@ -41,7 +42,8 @@ export async function handleAccessRequest(
 
     if (await isClientApproved(request, clientId, env.COOKIE_ENCRYPTION_KEY)) {
       const stateToken = await createOAuthState(oauthReqInfo, env.OAUTH_KV);
-      return redirectToAccess(request, env, oauthReqInfo, stateToken);
+      const { setCookie } = await bindStateToSession(stateToken);
+      return redirectToAccess(request, env, oauthReqInfo, stateToken, { "Set-Cookie": setCookie });
     }
 
     const { token: csrfToken, setCookie } = generateCSRFProtection();
@@ -88,9 +90,10 @@ export async function handleAccessRequest(
       );
 
       const stateToken = await createOAuthState(state.oauthReqInfo, env.OAUTH_KV);
+      const { setCookie: stateCookie } = await bindStateToSession(stateToken);
 
       return redirectToAccess(request, env, state.oauthReqInfo, stateToken, {
-        "Set-Cookie": approvedClientCookie,
+        "Set-Cookie": `${approvedClientCookie}; ${stateCookie}`,
       });
     } catch (error: any) {
       console.error("POST /authorize error:", error);
@@ -103,10 +106,12 @@ export async function handleAccessRequest(
 
   if (request.method === "GET" && pathname === "/callback") {
     let oauthReqInfo: AuthRequest;
+    let clearCookie: string;
 
     try {
       const result = await validateOAuthState(request, env.OAUTH_KV);
       oauthReqInfo = result.oauthReqInfo;
+      clearCookie = result.clearCookie;
     } catch (error: any) {
       if (error instanceof OAuthError) {
         return error.toResponse();
@@ -119,6 +124,7 @@ export async function handleAccessRequest(
     }
 
     const urls = buildAccessUrls(env.ACCESS_TEAM_NAME, env.ACCESS_CLIENT_ID);
+    const stateFromQuery = searchParams.get("state");
 
     const [accessToken, idToken, errResponse] = await fetchUpstreamAuthToken({
       client_id: env.ACCESS_CLIENT_ID,
@@ -126,6 +132,7 @@ export async function handleAccessRequest(
       code: searchParams.get("code") ?? undefined,
       redirect_uri: new URL("/callback", request.url).href,
       upstream_url: urls.tokenUrl,
+      state: stateFromQuery ?? undefined,
     });
     if (errResponse) {
       return errResponse;
@@ -153,7 +160,13 @@ export async function handleAccessRequest(
       userId: user.sub,
     });
 
-    return Response.redirect(redirectTo, 302);
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: redirectTo,
+        ...(clearCookie ? { "Set-Cookie": clearCookie } : {}),
+      },
+    });
   }
 
   return new Response("Not Found", { status: 404 });

@@ -102,20 +102,53 @@ export async function createOAuthState(
   return state;
 }
 
+export async function bindStateToSession(stateToken: string): Promise<{ setCookie: string }> {
+  const consentedStateCookieName = "__Host-CONSENTED_STATE";
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(stateToken);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const setCookie = `${consentedStateCookieName}=${hashHex}; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=600`;
+  return { setCookie };
+}
+
 export async function validateOAuthState(
   request: Request,
   kv: KVNamespace,
 ): Promise<ValidateStateResult> {
+  const consentedStateCookieName = "__Host-CONSENTED_STATE";
   const url = new URL(request.url);
-  const state = url.searchParams.get("state");
+  const stateFromQuery = url.searchParams.get("state");
 
-  if (!state) {
+  if (!stateFromQuery) {
     throw new OAuthError("invalid_request", "Missing state parameter", 400);
   }
 
-  const storedDataJson = await kv.get(`oauth:state:${state}`);
+  const storedDataJson = await kv.get(`oauth:state:${stateFromQuery}`);
   if (!storedDataJson) {
     throw new OAuthError("invalid_request", "Invalid or expired state", 400);
+  }
+
+  const cookieHeader = request.headers.get("Cookie") || "";
+  const cookies = cookieHeader.split(";").map((c) => c.trim());
+  const consentedStateCookie = cookies.find((c) => c.startsWith(`${consentedStateCookieName}=`));
+  const consentedStateHash = consentedStateCookie ? consentedStateCookie.substring(consentedStateCookieName.length + 1) : null;
+
+  if (!consentedStateHash) {
+    throw new OAuthError("invalid_request", "Missing session binding cookie - authorization flow must be restarted", 400);
+  }
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(stateFromQuery);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const stateHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  if (stateHash !== consentedStateHash) {
+    throw new OAuthError("invalid_request", "State token does not match session - possible CSRF attack detected", 400);
   }
 
   let oauthReqInfo: AuthRequest;
@@ -125,8 +158,8 @@ export async function validateOAuthState(
     throw new OAuthError("server_error", "Invalid state data", 500);
   }
 
-  await kv.delete(`oauth:state:${state}`);
-  const clearCookie = "";
+  await kv.delete(`oauth:state:${stateFromQuery}`);
+  const clearCookie = `${consentedStateCookieName}=; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=0`;
 
   return { oauthReqInfo, clearCookie };
 }
@@ -189,6 +222,7 @@ export async function fetchUpstreamAuthToken(params: {
   client_secret: string;
   code?: string;
   redirect_uri: string;
+  state?: string;
 }): Promise<[string, string, null] | [null, null, Response]> {
   if (!params.code) {
     return [null, null, new Response("Missing authorization code", { status: 400 })];
@@ -202,10 +236,15 @@ export async function fetchUpstreamAuthToken(params: {
     redirect_uri: params.redirect_uri,
   });
 
+  if (params.state) {
+    data.set("state", params.state);
+  }
+
   console.log("Token exchange request:", {
     url: params.upstream_url,
     code_present: !!params.code,
     redirect_uri: params.redirect_uri,
+    state_present: !!params.state,
   });
 
   const response = await fetch(params.upstream_url, {
