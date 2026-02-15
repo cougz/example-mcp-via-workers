@@ -164,9 +164,12 @@ In **Cloudflare Dashboard** → **Workers & Pages** → **your-worker** → **Se
 | `ACCESS_TEAM_NAME` | Your Cloudflare Zero Trust team name (e.g., `cougz`) |
 | `ACCESS_CLIENT_ID` | From SaaS app |
 | `ACCESS_CLIENT_SECRET` | From SaaS app |
+| `ACCESS_TOKEN_URL` | Token endpoint from SaaS app |
+| `ACCESS_AUTHORIZATION_URL` | Authorization endpoint from SaaS app |
+| `ACCESS_JWKS_URL` | JWKS endpoint from SaaS app |
 | `COOKIE_ENCRYPTION_KEY` | Generate: `openssl rand -hex 32` |
 
-Note: The OAuth URLs are automatically generated from your team name and client ID.
+The OAuth URLs are used for authenticating users through Cloudflare Access before they can access your MCP server.
 
 ### Step 6: Deploy
 

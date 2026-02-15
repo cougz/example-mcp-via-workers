@@ -1,24 +1,11 @@
 import type { Env, OAuthEnv } from "../types";
 import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import { createPublicHandler } from "../mcp-server";
-import { createAuthHandler } from "./auth-handler";
+import { handleAccessRequest } from "./access-handler";
 import { log } from "../utils/logger";
-
-// Build Cloudflare Access OAuth URLs from team name and client ID
-function buildAccessUrls(teamName: string, clientId: string) {
-  // Cloudflare Access OIDC endpoints follow predictable pattern
-  const baseUrl = `https://${teamName}.cloudflareaccess.com/cdn-cgi/access/sso/oidc/${clientId}`;
-  return {
-    tokenUrl: `${baseUrl}/token`,
-    authorizationUrl: `${baseUrl}/authorization`,
-    jwksUrl: `${baseUrl}/jwks`,
-  };
-}
 
 export function createOAuthProvider(env: OAuthEnv): OAuthProvider {
   const mcpHandler = createPublicHandler();
-
-  const authHandler = createAuthHandler();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const apiHandler: any = {
@@ -40,7 +27,7 @@ export function createOAuthProvider(env: OAuthEnv): OAuthProvider {
   return new OAuthProvider({
     apiRoute: "/mcp",
     apiHandler,
-    defaultHandler: authHandler,
+    defaultHandler: { fetch: handleAccessRequest as any },
     authorizeEndpoint: "/authorize",
     tokenEndpoint: "/token",
     clientRegistrationEndpoint: "/register",
