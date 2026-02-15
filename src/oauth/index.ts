@@ -1,10 +1,9 @@
 import type { Env, OAuthEnv } from "../types";
-import { OAuthProvider } from "@cloudflare/workers-oauth-provider";
 import { createPublicHandler } from "../mcp-server";
-import { handleAccessRequest } from "./access-handler";
+import { handleOAuthRequest } from "./access-handler";
 import { log } from "../utils/logger";
 
-export function createOAuthProvider(env: OAuthEnv): OAuthProvider {
+export function createOAuthProvider(env: OAuthEnv) {
   const mcpHandler = createPublicHandler();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,14 +23,24 @@ export function createOAuthProvider(env: OAuthEnv): OAuthProvider {
     },
   };
 
-  return new OAuthProvider({
-    apiRoute: "/mcp",
-    apiHandler,
-    defaultHandler: { fetch: handleAccessRequest as any },
-    authorizeEndpoint: "/authorize",
-    tokenEndpoint: "/token",
-    clientRegistrationEndpoint: "/register",
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const oauthHandler: any = {
+    async fetch(request: Request, envObj: any, ctx: ExecutionContext) {
+      return handleOAuthRequest(request, env as OAuthEnv, ctx);
+    },
+  };
+
+  return {
+    fetch(request: Request, env: any, ctx: ExecutionContext) {
+      const url = new URL(request.url);
+
+      if (url.pathname === "/mcp" || url.pathname.startsWith("/mcp/")) {
+        return apiHandler.fetch(request, env, ctx);
+      }
+
+      return oauthHandler.fetch(request, env, ctx);
+    },
+  };
 }
 
 export function isOAuthConfigured(env: unknown): env is OAuthEnv {
