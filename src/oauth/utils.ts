@@ -132,23 +132,35 @@ export async function validateOAuthState(
     throw new OAuthError("invalid_request", "Invalid or expired state", 400);
   }
 
-  const cookieHeader = request.headers.get("Cookie") || "";
-  const cookies = cookieHeader.split(";").map((c) => c.trim());
-  const consentedStateCookie = cookies.find((c) => c.startsWith(`${consentedStateCookieName}=`));
-  const consentedStateHash = consentedStateCookie ? consentedStateCookie.substring(consentedStateCookieName.length + 1) : null;
+  try {
+    const cookieHeader = request.headers.get("Cookie") || "";
+    const cookies = cookieHeader.split(";").map((c) => c.trim());
+    const consentedStateCookie = cookies.find((c) => c.startsWith(`${consentedStateCookieName}=`));
+    const consentedStateHash = consentedStateCookie ? consentedStateCookie.substring(consentedStateCookieName.length + 1) : null;
 
-  if (!consentedStateHash) {
-    throw new OAuthError("invalid_request", "Missing session binding cookie - authorization flow must be restarted", 400);
-  }
+    if (!consentedStateHash) {
+       throw new OAuthError("invalid_request", "Missing session binding cookie - authorization flow must be restarted", 400);
+    }
 
-  const encoder = new TextEncoder();
-  const data = encoder.encode(stateFromQuery);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const stateHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const encoder = new TextEncoder();
+    const data = encoder.encode(stateFromQuery);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const stateHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-  if (stateHash !== consentedStateHash) {
-    throw new OAuthError("invalid_request", "State token does not match session - possible CSRF attack detected", 400);
+    if (stateHash !== consentedStateHash) {
+      throw new OAuthError("invalid_request", "State token does not match session - possible CSRF attack detected", 400);
+    }
+  } catch (error: any) {
+    if (error instanceof OAuthError) {
+      throw error;
+    }
+    console.error("Session validation error:", {
+      error: error instanceof Error ? error.message : String(error),
+      state: stateFromQuery,
+      hasCookie: !!request.headers.get("Cookie"),
+    });
+    throw new OAuthError("server_error", "Session validation failed", 500);
   }
 
   let oauthReqInfo: AuthRequest;

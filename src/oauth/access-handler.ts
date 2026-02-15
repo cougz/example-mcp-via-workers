@@ -105,6 +105,14 @@ export async function handleAccessRequest(
   }
 
   if (request.method === "GET" && pathname === "/callback") {
+    console.log("Callback received", {
+      hasCode: !!searchParams.get("code"),
+      hasError: !!searchParams.get("error"),
+      hasState: !!searchParams.get("state"),
+      error: searchParams.get("error"),
+      errorDescription: searchParams.get("error_description"),
+    });
+
     let oauthReqInfo: AuthRequest;
     let clearCookie: string;
 
@@ -113,6 +121,11 @@ export async function handleAccessRequest(
       oauthReqInfo = result.oauthReqInfo;
       clearCookie = result.clearCookie;
     } catch (error: any) {
+      console.error("State validation failed:", {
+        error: error instanceof Error ? error.message : String(error),
+        code: error instanceof OAuthError ? error.code : undefined,
+        description: error instanceof OAuthError ? error.description : undefined,
+      });
       if (error instanceof OAuthError) {
         return error.toResponse();
       }
