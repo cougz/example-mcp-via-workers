@@ -1,87 +1,48 @@
 import type { Env, McpServerConfig } from "./types";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createMcpHandler } from "agents/mcp";
-import { log, logRequest, logError } from "./utils/logger";
-import { registerTools, tools } from "./tools";
-import { registerResources, resources } from "./resources";
-import { registerPrompts, prompts } from "./prompts";
+import { log, CORS_HEADERS, OPTIONS_RESPONSE, ERROR_RESPONSE_BODY } from "./utils/logger";
+import { registerTools } from "./tools";
 
-const SERVER_CONFIG: McpServerConfig = {
+const SERVER_CONFIG: McpServerConfig = Object.freeze({
   name: "MCP Server Template",
   version: "1.0.0",
-};
+});
 
-function createServer(request: Request, env: Env, ctx: ExecutionContext): McpServer {
-  const server = new McpServer({
-    name: SERVER_CONFIG.name,
-    version: SERVER_CONFIG.version,
-  });
-
-  const toolContext = { env, ctx, request };
-
-  registerTools(server, toolContext);
-  registerResources(server);
-  registerPrompts(server);
-
-  log("info", "Server initialized", {
-    serverName: SERVER_CONFIG.name,
-    version: SERVER_CONFIG.version,
-    toolsCount: tools.length,
-    resourcesCount: resources.length,
-    promptsCount: prompts.length,
-  });
-
+function createMcpServer(): McpServer {
+  const server = new McpServer(SERVER_CONFIG);
+  registerTools(server);
   return server;
 }
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
-};
-
-function handleOptions(): Response {
-  return new Response(null, {
-    status: 204,
-    headers: CORS_HEADERS,
-  });
-}
-
-function handleError(error: unknown): Response {
-  logError(error, "Request handler error");
-  return new Response(JSON.stringify({ error: "Internal Server Error" }), {
-    status: 500,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-  });
-}
-
 export default {
-  fetch: async (request: Request, env: Env, ctx: ExecutionContext): Promise<Response> => {
-    logRequest(request);
-
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === "OPTIONS") {
-      return handleOptions();
+      return OPTIONS_RESPONSE;
     }
 
     try {
-      const server = createServer(request, env, ctx);
+      const server = createMcpServer();
       const handler = createMcpHandler(server);
       const response = await handler(request, env, ctx);
 
-      const newHeaders = new Headers(response.headers);
-      for (const [key, value] of Object.entries(CORS_HEADERS)) {
-        newHeaders.set(key, value);
-      }
+      const headers = new Headers(response.headers);
+      headers.set("Access-Control-Allow-Origin", "*");
+      headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
 
       return new Response(response.body, {
         status: response.status,
-        statusText: response.statusText,
-        headers: newHeaders,
+        headers,
       });
     } catch (error) {
-      return handleError(error);
+      log("error", "Request failed", { error: error instanceof Error ? error.message : String(error) });
+      return new Response(ERROR_RESPONSE_BODY, {
+        status: 500,
+        headers: CORS_HEADERS,
+      });
     }
   },
 };
 
-export { SERVER_CONFIG, tools, resources, prompts };
+export { SERVER_CONFIG };

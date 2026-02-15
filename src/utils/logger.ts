@@ -1,30 +1,24 @@
-import type { Env } from "../types";
+const CORS_HEADERS: HeadersInit = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
+  "Content-Type": "application/json",
+};
 
-export function log(level: "info" | "warn" | "error", message: string, data?: Record<string, unknown>) {
-  const timestamp = new Date().toISOString();
-  const logEntry = {
-    timestamp,
-    level,
-    message,
-    ...data,
-  };
-  console.log(JSON.stringify(logEntry));
+const OPTIONS_RESPONSE = new Response(null, {
+  status: 204,
+  headers: CORS_HEADERS,
+});
+
+const ERROR_RESPONSE_BODY = JSON.stringify({ error: "Internal Server Error" });
+
+function log(level: string, message: string, data?: Record<string, unknown>) {
+  console.log(JSON.stringify({ level, message, ...data }));
 }
 
-export function logRequest(request: Request) {
-  log("info", "Incoming request", {
-    method: request.method,
-    url: request.url,
-    headers: Object.fromEntries(request.headers.entries()),
-  });
-}
-
-export function logError(error: unknown, context?: string) {
-  const errorMessage = error instanceof Error ? error.message : String(error);
-  const errorStack = error instanceof Error ? error.stack : undefined;
-  log("error", context || "Error occurred", {
-    error: errorMessage,
-    stack: errorStack,
+function logError(error: unknown, context: string) {
+  log("error", context, {
+    error: error instanceof Error ? error.message : String(error),
   });
 }
 
@@ -35,7 +29,7 @@ export function createErrorResponse(error: unknown) {
       {
         type: "text" as const,
         text: JSON.stringify({
-          error: error instanceof Error ? error.message : "Unknown error occurred",
+          error: error instanceof Error ? error.message : "Unknown error",
           success: false,
         }),
       },
@@ -43,3 +37,5 @@ export function createErrorResponse(error: unknown) {
     isError: true,
   };
 }
+
+export { CORS_HEADERS, OPTIONS_RESPONSE, ERROR_RESPONSE_BODY, log, logError };

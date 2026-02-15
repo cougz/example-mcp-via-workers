@@ -22,9 +22,8 @@ bun install && bun run dev
 ```
 src/
 ├── index.ts      # Entry point
+├── types.ts      # Type definitions
 ├── tools/        # Add tools here
-├── resources/    # Add resources here
-├── prompts/      # Add prompts here
 └── utils/        # Logging utilities
 ```
 
@@ -38,7 +37,7 @@ export const tools: ToolDefinition[] = [
     name: "my_tool",
     description: "What it does",
     inputSchema: { input: z.string() },
-    handler: async (params, context) => ({ result: "..." }),
+    handler: async (params) => ({ result: "..." }),
   },
 ];
 ```
