@@ -1,6 +1,6 @@
 import type { Env } from "./types";
 import { MCPServer } from "./mcp-agent";
-import { routeAgentRequest, getAgentByName } from "agents";
+import { routeAgentRequest } from "agents";
 import { runWithContext, logger, formatError } from "./utils/logger";
 
 const SECURITY_HEADERS = {
@@ -55,28 +55,19 @@ export default {
         }
 
         if (url.pathname === "/mcp") {
-          logger.info("Backwards compatibility - forwarding /mcp to agent route");
-          const agent = await getAgentByName(env.MCPServer as any, "default");
-          if (!agent) {
-            return new Response("Agent not found", {
-              status: 500,
-              headers: { ...corsHeaders, ...SECURITY_HEADERS },
-            });
-          }
+          logger.info("Backwards compatibility - rewriting /mcp to agent route");
           const mcpUrl = new URL(request.url);
           mcpUrl.pathname = "/agents/mcp-server/default/mcp";
           const mcpRequest = new Request(mcpUrl.toString(), request);
-          const response = await agent.fetch(mcpRequest);
+          const agentResponse = await routeAgentRequest(mcpRequest, env);
 
-          const headers = new Headers(response.headers);
-          for (const [key, value] of Object.entries({ ...corsHeaders, ...SECURITY_HEADERS })) {
-            headers.set(key, value);
+          if (agentResponse) {
+            return agentResponse;
           }
-          headers.set("X-Request-Id", requestId);
 
-          return new Response(response.body, {
-            status: response.status,
-            headers,
+          return new Response("Agent not found", {
+            status: 500,
+            headers: { ...corsHeaders, ...SECURITY_HEADERS },
           });
         }
 
