@@ -169,6 +169,8 @@ export function getUpstreamAuthorizeUrl(params: {
   redirect_uri: string;
   scope: string;
   state: string;
+  code_challenge?: string;
+  code_challenge_method?: string;
 }): string {
   const url = new URL(params.upstream_url);
   url.searchParams.set("client_id", params.client_id);
@@ -176,6 +178,12 @@ export function getUpstreamAuthorizeUrl(params: {
   url.searchParams.set("response_type", "code");
   url.searchParams.set("scope", params.scope);
   url.searchParams.set("state", params.state);
+  if (params.code_challenge) {
+    url.searchParams.set("code_challenge", params.code_challenge);
+  }
+  if (params.code_challenge_method) {
+    url.searchParams.set("code_challenge_method", params.code_challenge_method);
+  }
   return url.toString();
 }
 

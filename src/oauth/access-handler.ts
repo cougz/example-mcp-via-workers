@@ -41,7 +41,7 @@ export async function handleAccessRequest(
 
     if (await isClientApproved(request, clientId, env.COOKIE_ENCRYPTION_KEY)) {
       const { stateToken } = await createOAuthState(oauthReqInfo, env.OAUTH_KV);
-      return redirectToAccess(request, env, stateToken);
+      return redirectToAccess(request, env, oauthReqInfo, stateToken);
     }
 
     const { token: csrfToken, setCookie } = generateCSRFProtection();
@@ -89,7 +89,7 @@ export async function handleAccessRequest(
 
       const { stateToken } = await createOAuthState(state.oauthReqInfo, env.OAUTH_KV);
 
-      return redirectToAccess(request, env, stateToken, {
+      return redirectToAccess(request, env, state.oauthReqInfo, stateToken, {
         "Set-Cookie": approvedClientCookie,
       });
     } catch (error: any) {
@@ -162,6 +162,7 @@ export async function handleAccessRequest(
 async function redirectToAccess(
   request: Request,
   env: OAuthEnv,
+  oauthReqInfo: AuthRequest,
   stateToken: string,
   headers: Record<string, string> = {},
 ) {
@@ -175,6 +176,8 @@ async function redirectToAccess(
         scope: "openid email profile",
         state: stateToken,
         upstream_url: urls.authorizationUrl,
+        code_challenge: oauthReqInfo.codeChallenge,
+        code_challenge_method: oauthReqInfo.codeChallengeMethod,
       }),
     },
     status: 302,
