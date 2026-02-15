@@ -98,7 +98,12 @@ export async function createOAuthState(
   const state = oauthReqInfo.state || crypto.randomUUID();
   const codeVerifier = (oauthReqInfo as any).codeVerifier || crypto.randomUUID();
   const stateData = {
-    ...oauthReqInfo,
+    clientId: oauthReqInfo.clientId,
+    redirectUri: oauthReqInfo.redirectUri,
+    scope: oauthReqInfo.scope,
+    state: oauthReqInfo.state,
+    codeChallenge: oauthReqInfo.codeChallenge,
+    codeChallengeMethod: oauthReqInfo.codeChallengeMethod,
     _codeVerifier: codeVerifier,
   };
   await kv.put(`oauth:state:${state}`, JSON.stringify(stateData), {
