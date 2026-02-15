@@ -13,7 +13,6 @@
       "head_sampling_rate": 1
     }
   },
-  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "a0f5ac92dfea4fb9912a8ba3a06bb4b3" }],
   "env": {
     "staging": {
       "name": "example-mcp-via-workers-staging",

@@ -2,8 +2,6 @@ import type { Env } from "./types";
 import { createPublicHandler, SERVER_CONFIG } from "./mcp-server";
 import { CORS_HEADERS, OPTIONS_RESPONSE, ERROR_RESPONSE_BODY, log } from "./utils/logger";
 
-// Worker entry point - OAuth with enhanced security (RFC 9700 compliant)
-
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === "OPTIONS") {
@@ -11,13 +9,6 @@ export default {
     }
 
     try {
-      const { isOAuthConfigured, createOAuthProvider } = await import("./oauth");
-
-      if (isOAuthConfigured(env)) {
-        const provider = createOAuthProvider(env);
-        return provider.fetch(request, env, ctx);
-      }
-
       const handler = createPublicHandler();
       const response = await handler.fetch(request, env, ctx);
 
