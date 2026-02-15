@@ -126,7 +126,6 @@ export async function handleAccessRequest(
       code: searchParams.get("code") ?? undefined,
       redirect_uri: new URL("/callback", request.url).href,
       upstream_url: urls.tokenUrl,
-      state: searchParams.get("state") ?? undefined,
     });
     if (errResponse) {
       return errResponse;
