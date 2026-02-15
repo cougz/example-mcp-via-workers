@@ -1,5 +1,5 @@
 {
-  "name": "mcp-server-template",
+  "name": "example-mcp-via-workers",
   "main": "src/index.ts",
   "compatibility_date": "2026-02-14",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
@@ -17,7 +17,7 @@
   "// kv_namespaces": [{ "binding": "OAUTH_KV", "id": "YOUR_KV_NAMESPACE_ID" }],
   "env": {
     "staging": {
-      "name": "mcp-server-template-staging",
+      "name": "example-mcp-via-workers-staging",
       "observability": {
         "logs": {
           "enabled": true,
