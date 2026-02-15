@@ -23,7 +23,7 @@ export default {
 
     try {
       const server = createMcpServer();
-      const handler = createMcpHandler(server);
+      const handler = createMcpHandler(server, { route: "/mcp" });
       const response = await handler(request, env, ctx);
 
       const headers = new Headers(response.headers);

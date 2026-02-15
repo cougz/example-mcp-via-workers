@@ -12,8 +12,11 @@ const OPTIONS_RESPONSE = new Response(null, {
 
 const ERROR_RESPONSE_BODY = JSON.stringify({ error: "Internal Server Error" });
 
-function log(level: string, message: string, data?: Record<string, unknown>) {
-  console.log(JSON.stringify({ level, message, ...data }));
+function log(level: "info" | "warn" | "error", message: string, data?: Record<string, unknown>) {
+  const entry = JSON.stringify({ level, message, ...data });
+  if (level === "error") console.error(entry);
+  else if (level === "warn") console.warn(entry);
+  else console.log(entry);
 }
 
 function logError(error: unknown, context: string) {
