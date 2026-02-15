@@ -6,8 +6,11 @@ Production-ready MCP server template for Cloudflare Workers using the McpAgent p
 
 ```bash
 bun install && bun run dev
-# Connect MCP Inspector to http://localhost:8787/agents/mcp-server/default/mcp
+# Connect MCP Inspector to http://localhost:8787/mcp
+# or http://localhost:8787/agents/mcp-server/default/mcp (new pattern)
 ```
+
+Note: `/mcp` is a backwards-compatible route that forwards to `/agents/mcp-server/default/mcp`.
 
 ## Scripts
 
@@ -86,7 +89,7 @@ Zod schemas are validated automatically by the MCP SDK.
   "mcp": {
     "my-server": {
       "type": "remote",
-      "url": "https://my-worker.workers.dev/agents/mcp-server/default/mcp",
+      "url": "https://my-worker.workers.dev/mcp",
       "enabled": true
     }
   }
@@ -98,10 +101,12 @@ Zod schemas are validated automatically by the MCP SDK.
 ```json
 {
   "mcpServers": {
-    "my-server": { "url": "https://my-worker.workers.dev/agents/mcp-server/default/mcp" }
+    "my-server": { "url": "https://my-worker.workers.dev/mcp" }
   }
 }
 ```
+
+**Note**: Both `/mcp` (backwards-compatible) and `/agents/mcp-server/default/mcp` (agent pattern) work as endpoints.
 
 ## Features
 
