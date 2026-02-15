@@ -95,6 +95,7 @@ The server runs in **public mode** by default. Enable OAuth to protect with Clou
 ✅ **Authorization Code Injection Prevention** - State validated in token exchange
 ✅ **PKCE Support** - Proof Key for Code Exchange for enhanced security
 ✅ **Secure Cookie Handling** - `__Host-` prefix prevents subdomain attacks
+✅ **Custom OAuth Flow** - Manual implementation for OAuth proxy scenario
 
 ### Prerequisites
 
