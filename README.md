@@ -15,7 +15,17 @@ bun install && bun run dev
 |---------|-------------|
 | `bun run dev` | Local development |
 | `bun run test` | Run tests |
-| `bun run deploy` | Deploy to Cloudflare |
+| `bun run deploy` | Deploy to production |
+| `bun run deploy:staging` | Deploy to staging |
+
+## Environments
+
+| Environment | Logs | Traces | Use Case |
+|-------------|------|--------|----------|
+| Production | 10% | 1% | Cost-optimized for high traffic |
+| Staging | 100% | 10% | Full visibility for debugging |
+
+Sampling rates control what percentage of requests are logged/traced. Lower rates reduce costs while maintaining observability.
 
 ## Structure
 
