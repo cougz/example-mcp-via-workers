@@ -1,19 +1,6 @@
-import type { Env, McpServerConfig } from "./types";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { createMcpHandler } from "agents/mcp";
-import { log, CORS_HEADERS, OPTIONS_RESPONSE, ERROR_RESPONSE_BODY } from "./utils/logger";
-import { registerTools } from "./tools";
-
-const SERVER_CONFIG: McpServerConfig = Object.freeze({
-  name: "MCP Server Template",
-  version: "1.0.0",
-});
-
-function createMcpServer(): McpServer {
-  const server = new McpServer(SERVER_CONFIG);
-  registerTools(server);
-  return server;
-}
+import type { Env } from "./types";
+import { createPublicHandler, SERVER_CONFIG } from "./mcp-server";
+import { CORS_HEADERS, OPTIONS_RESPONSE, ERROR_RESPONSE_BODY, log } from "./utils/logger";
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -22,9 +9,15 @@ export default {
     }
 
     try {
-      const server = createMcpServer();
-      const handler = createMcpHandler(server, { route: "/mcp" });
-      const response = await handler(request, env, ctx);
+      const { isOAuthConfigured, createOAuthProvider } = await import("./oauth");
+
+      if (isOAuthConfigured(env)) {
+        const provider = createOAuthProvider(env);
+        return provider.fetch(request, env, ctx);
+      }
+
+      const handler = createPublicHandler();
+      const response = await handler.fetch(request, env, ctx);
 
       const headers = new Headers(response.headers);
       headers.set("Access-Control-Allow-Origin", "*");
@@ -36,7 +29,9 @@ export default {
         headers,
       });
     } catch (error) {
-      log("error", "Request failed", { error: error instanceof Error ? error.message : String(error) });
+      log("error", "Request failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return new Response(ERROR_RESPONSE_BODY, {
         status: 500,
         headers: CORS_HEADERS,
