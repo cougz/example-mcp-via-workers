@@ -16,6 +16,15 @@ import {
 
 type EnvWithOauth = OAuthEnv & { OAUTH_PROVIDER: OAuthHelpers };
 
+function buildAccessUrls(teamName: string, clientId: string) {
+  const baseUrl = `https://${teamName}.cloudflareaccess.com/cdn-cgi/access/sso/oidc/${clientId}`;
+  return {
+    tokenUrl: `${baseUrl}/token`,
+    authorizationUrl: `${baseUrl}/authorization`,
+    jwksUrl: `${baseUrl}/jwks`,
+  };
+}
+
 export async function handleAccessRequest(
   request: Request,
   env: EnvWithOauth,
@@ -109,18 +118,20 @@ export async function handleAccessRequest(
       return new Response("Invalid OAuth request data", { status: 400 });
     }
 
+    const urls = buildAccessUrls(env.ACCESS_TEAM_NAME, env.ACCESS_CLIENT_ID);
+
     const [accessToken, idToken, errResponse] = await fetchUpstreamAuthToken({
       client_id: env.ACCESS_CLIENT_ID,
       client_secret: env.ACCESS_CLIENT_SECRET,
       code: searchParams.get("code") ?? undefined,
       redirect_uri: new URL("/callback", request.url).href,
-      upstream_url: env.ACCESS_TOKEN_URL,
+      upstream_url: urls.tokenUrl,
     });
     if (errResponse) {
       return errResponse;
     }
 
-    const idTokenClaims = await verifyToken(env, idToken);
+    const idTokenClaims = await verifyToken(urls.jwksUrl, idToken);
     const user = {
       email: idTokenClaims.email,
       name: idTokenClaims.name,
@@ -154,6 +165,7 @@ async function redirectToAccess(
   stateToken: string,
   headers: Record<string, string> = {},
 ) {
+  const urls = buildAccessUrls(env.ACCESS_TEAM_NAME, env.ACCESS_CLIENT_ID);
   return new Response(null, {
     headers: {
       ...headers,
@@ -162,18 +174,15 @@ async function redirectToAccess(
         redirect_uri: new URL("/callback", request.url).href,
         scope: "openid email profile",
         state: stateToken,
-        upstream_url: env.ACCESS_AUTHORIZATION_URL,
+        upstream_url: urls.authorizationUrl,
       }),
     },
     status: 302,
   });
 }
 
-async function fetchAccessPublicKey(env: OAuthEnv, kid: string) {
-  if (!env.ACCESS_JWKS_URL) {
-    throw new Error("ACCESS_JWKS_URL not provided");
-  }
-  const resp = await fetch(env.ACCESS_JWKS_URL);
+async function fetchAccessPublicKey(jwksUrl: string, kid: string) {
+  const resp = await fetch(jwksUrl);
   const keys = (await resp.json()) as {
     keys: (JsonWebKey & { kid: string })[];
   };
@@ -221,9 +230,9 @@ function parseJWT(token: string) {
   };
 }
 
-async function verifyToken(env: OAuthEnv, token: string) {
+async function verifyToken(jwksUrl: string, token: string) {
   const jwt = parseJWT(token);
-  const key = await fetchAccessPublicKey(env, jwt.header.kid);
+  const key = await fetchAccessPublicKey(jwksUrl, jwt.header.kid);
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
