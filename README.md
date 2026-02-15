@@ -93,9 +93,8 @@ The server runs in **public mode** by default. Enable OAuth to protect with Clou
 ✅ **RFC 9700 Compliant** - OAuth 2.0 Security Best Practices
 ✅ **Session Binding** - State parameter bound to browser session for CSRF protection
 ✅ **Authorization Code Injection Prevention** - State validated in token exchange
-✅ **PKCE Support** - Proof Key for Code Exchange for enhanced security
+✅ **PKCE Support** - Proof Key for Code Exchange (forwarded to Access if provided)
 ✅ **Secure Cookie Handling** - `__Host-` prefix prevents subdomain attacks
-✅ **Custom OAuth Flow** - Manual implementation for OAuth proxy scenario
 
 ### Prerequisites
 
@@ -173,7 +172,6 @@ In **Cloudflare Dashboard** → **Workers & Pages** → **your-worker** → **Se
 | `ACCESS_TEAM_NAME` | Your Cloudflare Zero Trust team name (e.g., `cougz`) |
 | `ACCESS_CLIENT_ID` | From SaaS app |
 | `ACCESS_CLIENT_SECRET` | From SaaS app |
-| `COOKIE_ENCRYPTION_KEY` | Generate: `openssl rand -hex 32` |
 
 Note: OAuth URLs are automatically generated from your team name and client ID.
 
@@ -191,16 +189,16 @@ Push to GitHub. Workers Builds will auto-deploy.
 
 **Error: `{"error":"invalid_request","error_description":"Missing state parameter"}`**
 
-This is now automatically fixed. The OAuth implementation:
+The OAuth implementation:
 - Includes `state` parameter in token exchange requests to Cloudflare Access
-- Binds state to browser session via `__Host-CONSENTED_STATE` cookie
+- Binds state to browser session via `__Host-OAUTH_STATE` cookie
 - Validates state against both KV storage and session cookie
 
 **Common Issues:**
 
 | Issue | Solution |
 |--------|----------|
-| OAuth not triggering | Verify all 4 secrets are configured in Worker settings |
+| OAuth not triggering | Verify all 3 secrets are configured in Worker settings |
 | State validation failures | Check Worker logs for specific error messages |
 | Cookie not set | Ensure HTTPS is being used (required for secure cookies) |
 | KV storage errors | Verify KV namespace binding in `wrangler.jsonc` |

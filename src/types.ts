@@ -2,7 +2,6 @@ export interface Env {
   ACCESS_TEAM_NAME?: string;
   ACCESS_CLIENT_ID?: string;
   ACCESS_CLIENT_SECRET?: string;
-  COOKIE_ENCRYPTION_KEY?: string;
   OAUTH_KV?: KVNamespace;
 }
 
