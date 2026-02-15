@@ -13,8 +13,7 @@
       "head_sampling_rate": 0.01
     }
   },
-  "// For OAuth: Uncomment kv_namespaces and add your KV namespace ID": "",
-  "// kv_namespaces": [{ "binding": "OAUTH_KV", "id": "YOUR_KV_NAMESPACE_ID" }],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "a0f5ac92dfea4fb9912a8ba3a06bb4b3" }],
   "env": {
     "staging": {
       "name": "example-mcp-via-workers-staging",
