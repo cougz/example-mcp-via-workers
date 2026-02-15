@@ -64,16 +64,16 @@ export function isOAuthConfigured(env: unknown): env is OAuthEnv {
   );
 
   if (partial && !configured) {
+    const missing = [];
+    if (!e.ACCESS_TEAM_NAME) missing.push("ACCESS_TEAM_NAME");
+    if (!e.ACCESS_CLIENT_ID) missing.push("ACCESS_CLIENT_ID");
+    if (!e.ACCESS_CLIENT_SECRET) missing.push("ACCESS_CLIENT_SECRET");
+    if (!e.COOKIE_ENCRYPTION_KEY) missing.push("COOKIE_ENCRYPTION_KEY");
+    if (!e.OAUTH_KV) missing.push("OAUTH_KV (KV namespace binding)");
+
     log(
       "warn",
-      "OAuth partially configured - some secrets missing. Running in public mode.",
-      {
-        hasTeamName: !!e.ACCESS_TEAM_NAME,
-        hasClientId: !!e.ACCESS_CLIENT_ID,
-        hasClientSecret: !!e.ACCESS_CLIENT_SECRET,
-        hasCookieKey: !!e.COOKIE_ENCRYPTION_KEY,
-        hasKv: !!e.OAUTH_KV,
-      }
+      `OAuth partially configured - missing: ${missing.join(", ")}. Running in public mode.`,
     );
   }
 
