@@ -4,6 +4,7 @@ import { createPublicHandler } from "../mcp-server";
 import { createAuthHandler } from "./auth-handler";
 import { log } from "../utils/logger";
 
+// Build Cloudflare Access OAuth URLs from team name and client ID
 function buildAccessUrls(teamName: string, clientId: string) {
   const baseUrl = `https://${teamName}.cloudflareaccess.com/cdn-cgi/access/sso/oidc/${clientId}`;
   return {
