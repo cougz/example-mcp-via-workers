@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { createErrorResponse } from "../utils/logger";
+import { logger, formatError } from "../utils/logger";
+import { sanitizeParams } from "../utils/sanitize";
 
 export type ToolDefinition = {
   name: string;
@@ -35,18 +36,50 @@ export function registerTools(server: {
     name: string,
     description: string,
     schema: Record<string, z.ZodType<unknown>>,
-    handler: (params: Record<string, unknown>) => Promise<{ content: Array<{ type: "text"; text: string }>; isError?: boolean }>
+    handler: (params: Record<string, unknown>) => Promise<{
+      content: Array<{ type: "text"; text: string }>;
+      isError?: boolean;
+    }>
   ) => void;
 }) {
   for (const tool of tools) {
     server.tool(tool.name, tool.description, tool.inputSchema, async (params: Record<string, unknown>) => {
+      const startTime = Date.now();
+      const sanitizedParams = sanitizeParams(params);
+
+      logger.info("Tool invoked", { tool: tool.name, params: sanitizedParams });
+
       try {
         const result = await tool.handler(params);
+
+        logger.info("Tool completed", {
+          tool: tool.name,
+          durationMs: Date.now() - startTime,
+        });
+
         return {
           content: [{ type: "text" as const, text: JSON.stringify({ success: true, data: result }) }],
         };
       } catch (error) {
-        return createErrorResponse(error);
+        logger.error("Tool failed", {
+          tool: tool.name,
+          params: sanitizedParams,
+          error: formatError(error),
+          durationMs: Date.now() - startTime,
+        });
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+              }),
+            },
+          ],
+          isError: true,
+        };
       }
     });
   }
